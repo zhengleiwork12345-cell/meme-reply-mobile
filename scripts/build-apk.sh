@@ -13,5 +13,8 @@ fi
 
 mkdir -p /output
 npm ci
-./android/gradlew --no-daemon :app:assembleRelease
+# Git checkouts created on Windows may not preserve the executable bit of
+# android/gradlew. Invoke it through Bash so local Docker and GitHub Actions
+# builds do not depend on that filesystem metadata.
+bash ./android/gradlew --no-daemon :app:assembleRelease
 install -m 0644 android/app/build/outputs/apk/release/app-release.apk "/output/${APK_OUTPUT_NAME:-meme-reply-release.apk}"
