@@ -1,0 +1,7 @@
+import type { Mood } from './types';
+export const MAX_CONTEXT_TEXT_LENGTH = 240;
+export type GenerationInput = { sourceUri: string; sourceMimeType?: string; mood: Mood; replyText?: string; contextText?: string };
+export type GenerationResult = { requestId: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp'; imageBase64: string };
+export type GenerationFailure = { kind: 'validation' | 'auth' | 'quota' | 'network' | 'upstream' | 'service'; message: string; retryable: boolean };
+export function validateGeneration(input: GenerationInput): GenerationFailure | null { if (!input.sourceUri) return { kind: 'validation', message: '请先选择收到的表情包。', retryable: false }; if (!['image/jpeg', 'image/png'].includes(input.sourceMimeType || mimeFromUri(input.sourceUri))) return { kind: 'validation', message: '即梦参考图仅支持 PNG 或 JPEG 图片。', retryable: false }; if ((input.replyText?.length || 0) > 30) return { kind: 'validation', message: '自定义回击语最多 30 个字。', retryable: false }; if ((input.contextText?.length || 0) > MAX_CONTEXT_TEXT_LENGTH) return { kind: 'validation', message: `聊天上下文最多 ${MAX_CONTEXT_TEXT_LENGTH} 个字。`, retryable: false }; return null; }
+export function mimeFromUri(uri: string): 'image/jpeg' | 'image/png' | 'image/webp' { const extension = uri.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)?.[1]?.toLowerCase(); return extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg'; }

@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "斗图助手",
+    "slug": "wechat-meme-assistant",
+    "version": "1.0.0",
+    "scheme": "meme-reply",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.local.memereply",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "permissions": [
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许斗图助手从相册导入表情包。"
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}

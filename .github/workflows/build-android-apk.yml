@@ -1,0 +1,73 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - README.md
+      - .github/workflows/publish-android-builder.yml
+
+permissions:
+  contents: read
+
+env:
+  APK_OUTPUT_NAME: meme-reply-release.apk
+  BUILDER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/meme-reply-android-builder:latest
+  MEME_API_URL: ${{ vars.MEME_API_URL }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  apk:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate build configuration
+        run: |
+          test -n "$MEME_API_URL" || { echo "Set repository variable MEME_API_URL before building." >&2; exit 2; }
+          test -n "$BUILDER_IMAGE" || { echo "Set repository secret DOCKERHUB_USERNAME before building." >&2; exit 2; }
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package-lock.json', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Build APK in the Docker Hub builder image
+        run: |
+          mkdir -p artifacts
+          docker pull "$BUILDER_IMAGE"
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -v "$GITHUB_WORKSPACE/artifacts:/output" \
+            -v "$HOME/.gradle:/root/.gradle" \
+            -e "EXPO_PUBLIC_MEME_API_URL=$MEME_API_URL" \
+            -e "APK_OUTPUT_NAME=$APK_OUTPUT_NAME" \
+            "$BUILDER_IMAGE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meme-reply-android-apk
+          path: artifacts/meme-reply-release.apk
+          if-no-files-found: error
+          retention-days: 14

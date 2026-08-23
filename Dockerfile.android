@@ -1,0 +1,31 @@
+FROM node:24-bookworm
+
+ARG ANDROID_COMMAND_LINE_TOOLS=15859902
+ARG ANDROID_COMMAND_LINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    ANDROID_HOME=/opt/android-sdk \
+    ANDROID_SDK_ROOT=/opt/android-sdk \
+    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
+    PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH \
+    GRADLE_USER_HOME=/root/.gradle
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates curl openjdk-17-jdk unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
+    && curl --fail --location --silent --show-error --output /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_COMMAND_LINE_TOOLS}_latest.zip" \
+    && echo "${ANDROID_COMMAND_LINE_TOOLS_SHA256}  /tmp/cmdline-tools.zip" | sha256sum --check --status \
+    && unzip -q /tmp/cmdline-tools.zip -d ${ANDROID_HOME}/cmdline-tools \
+    && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \
+    && rm /tmp/cmdline-tools.zip
+
+RUN yes | sdkmanager --licenses \
+    && sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+WORKDIR /workspace
+COPY scripts/build-apk.sh /usr/local/bin/build-apk
+RUN chmod 0555 /usr/local/bin/build-apk
+
+ENTRYPOINT ["/usr/local/bin/build-apk"]

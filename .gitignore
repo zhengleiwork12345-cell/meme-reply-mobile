@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+.expo-export*/
+.gradle/
+artifacts/
+.env
+*.apk
+*.aab

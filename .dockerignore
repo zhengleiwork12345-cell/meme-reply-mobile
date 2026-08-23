@@ -1,0 +1,4 @@
+**
+!Dockerfile.android
+!scripts/
+!scripts/build-apk.sh
