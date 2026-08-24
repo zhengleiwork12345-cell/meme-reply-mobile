@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import { MOODS, type Mood, type Meme } from './src/types';
 import { getRecommendations } from './src/recommendations';
-import { addMemeFiles, cleanupGeneratedCache, deleteMeme, loadLibrary, promoteGenerated, saveLibrary, saveGeneratedImage } from './src/library';
+import { addMemeFiles, cleanupGeneratedCache, deleteMeme, discardStagedIncomingImage, loadLibrary, promoteGenerated, saveLibrary, saveGeneratedImage, stageIncomingImage } from './src/library';
 import { generateReply, type GenerationFailure } from './src/generation';
 import { MAX_CONTEXT_TEXT_LENGTH } from './src/generation-contract';
 import { restoreSession, signIn, signOut, type Session } from './src/auth';
@@ -33,7 +33,7 @@ export default function App() {
   const recommendations = useMemo(() => getRecommendations(library, incomingMood), [library, incomingMood]);
   const updateLibrary = async (next: Meme[]) => { setLibrary(next); await saveLibrary(next); };
 
-    async function chooseIncoming() { const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 }); if (!result.canceled) { setIncomingUri(result.assets[0].uri); setIncomingMimeType(result.assets[0].mimeType || undefined); setGenerated(null); setGenerationError(null); } }
+    async function chooseIncoming() { const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 }); if (result.canceled) return; try { const staged = await stageIncomingImage(result.assets[0]); await discardStagedIncomingImage(incomingUri); setIncomingUri(staged.uri); setIncomingMimeType(staged.mimeType); setGenerated(null); setGenerationError(null); } catch (error) { setGenerationError({ kind: 'validation', message: error instanceof Error ? error.message : '无法读取所选图片。', retryable: false }); } }
   async function chooseLibraryImages() { const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 10, quality: 0.82 }); if (result.canceled) return; try { await updateLibrary(await addMemeFiles(library, result.assets, libraryMood, tags)); setTags(''); } catch { Alert.alert('保存失败', '无法将所选图片保存到本地表情库。'); } }
   async function remove(item: Meme) { try { await updateLibrary(await deleteMeme(library, item)); } catch { Alert.alert('删除失败', '图片没有被删除，请稍后重试。'); } }
   async function share(item: Meme) { if (!await Sharing.isAvailableAsync()) { Alert.alert('无法分享', '当前设备不支持系统分享。请在相册中手动发送图片。'); return; } await Sharing.shareAsync(item.uri, { dialogTitle: '选择微信并手动确认发送' }); }
