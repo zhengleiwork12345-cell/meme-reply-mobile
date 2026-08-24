@@ -22,6 +22,8 @@ npx expo start
 
 只需要将自托管后端的 HTTPS URL 填入 `.env`。首次使用 App 时，使用后端配置的注册邀请码创建账户；密码至少 10 位。不要将即梦 API、数据库或 JWT 密钥写入 App `.env`。AI 生成参考图仅支持 PNG 或 JPEG。
 
+当前仓库暂时为受控测试设备允许 `http://home.zhenglei.online:37353`，且仅对该域名生效。它会以明文传输密码、令牌和图片，绝不能用于正式发布；配置好 HTTPS 后必须删除 `android/app/src/main/res/xml/network_security_config.xml`、移除 Manifest 中的 `networkSecurityConfig`，并将工作流地址恢复为 HTTPS。
+
 ## Android APK（EAS）
 
 1. `npm install --global eas-cli`，随后运行 `eas login` 与 `eas build:configure`。
@@ -86,3 +88,4 @@ npx expo export --platform android --output-dir .expo-export-check
 ```
 
 真机验收：导入至少三张本地图、切换情绪检查排序、保存并删除图片、测试生成失败与重试、保存生成图、取消分享、以及在安装微信的设备上手动完成一次系统分享。
+
