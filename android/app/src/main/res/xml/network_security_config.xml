@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Temporary test-only exception. Do not add a base-config exception. -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">home.zhenglei.online</domain>
+  </domain-config>
+</network-security-config>
+
