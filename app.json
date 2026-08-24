@@ -4,6 +4,7 @@
     "slug": "wechat-meme-assistant",
     "version": "1.0.0",
     "scheme": "meme-reply",
+    "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
