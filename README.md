@@ -24,6 +24,23 @@ npx expo start
 
 当前仓库暂时为受控测试设备允许 `http://home.zhenglei.online:37353`，且仅对该域名生效。它会以明文传输密码、令牌和图片，绝不能用于正式发布；配置好 HTTPS 后必须删除 `android/app/src/main/res/xml/network_security_config.xml`、移除 Manifest 中的 `networkSecurityConfig`，并将工作流地址恢复为 HTTPS。
 
+### 当前临时测试的网络协议
+
+| 通信链路 | 当前协议 | 说明 |
+| --- | --- | --- |
+| Android App → `home.zhenglei.online:37353` | **HTTP（明文，仅临时测试）** | 注册、登录、刷新令牌、上传来图、获取生成结果都会经过此链路。请勿在公共 Wi-Fi、移动网络或正式账号上使用。 |
+| 自托管后端 → 火山引擎方舟/即梦 API | **HTTPS** | 即梦 API Key 仅在后端环境中使用，不会进入 App。 |
+| GitHub → GitHub Actions / APK Artifact | **HTTPS** | 源码、工作流和 APK Artifact 的 GitHub 链路。 |
+| GitHub Actions → Docker Hub | **HTTPS** | 拉取 Android 构建镜像的链路。 |
+| Android 系统分享面板 → 微信 | 由微信处理 | App 不读取微信内容，也不自动发送。 |
+
+恢复正式 HTTPS 前，必须完成以下操作：
+
+1. 确认 `https://home.zhenglei.online/health` 返回 `{ "ok": true }`。
+2. 删除 `android/app/src/main/res/xml/network_security_config.xml`，并移除 `AndroidManifest.xml` 中的 `android:networkSecurityConfig` 属性。
+3. 将 `.env` 和 GitHub Actions 中的 `MEME_API_URL` 恢复为 `https://home.zhenglei.online`。
+4. 重新构建并安装 APK；不要继续使用临时 HTTP 版本。
+
 ## Android APK（EAS）
 
 1. `npm install --global eas-cli`，随后运行 `eas login` 与 `eas build:configure`。
