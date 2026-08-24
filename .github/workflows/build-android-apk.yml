@@ -14,7 +14,9 @@ permissions:
 env:
   APK_OUTPUT_NAME: meme-reply-release.apk
   BUILDER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/meme-reply-android-builder:latest
-  MEME_API_URL: ${{ vars.MEME_API_URL }}
+  # TEMPORARY: The backend port currently serves HTTP only. Revert to the
+  # repository variable (and HTTPS) before any non-test distribution.
+  MEME_API_URL: http://home.zhenglei.online:37353
 
 jobs:
   quality:
@@ -71,3 +73,4 @@ jobs:
           path: artifacts/meme-reply-release.apk
           if-no-files-found: error
           retention-days: 14
+
