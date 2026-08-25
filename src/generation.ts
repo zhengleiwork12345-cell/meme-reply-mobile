@@ -7,8 +7,9 @@ export { validateGeneration, type GenerationFailure, type GenerationInput, type 
 const endpoint = API_ENDPOINT;
 
 type JsonObject = Record<string, unknown>;
+export type GenerationTrace = (event: string) => void;
 
-export async function generateReply(input: GenerationInput): Promise<GenerationResult> {
+export async function generateReply(input: GenerationInput, trace?: GenerationTrace): Promise<GenerationResult> {
   const invalid = validateGeneration(input);
   if (invalid) throw invalid;
   if (!endpoint) throw { kind: 'service', message: '生成服务尚未配置。', retryable: false } satisfies GenerationFailure;
@@ -22,16 +23,23 @@ export async function generateReply(input: GenerationInput): Promise<GenerationR
   if (input.contextText) body.append('contextText', input.contextText);
 
   try {
+    trace?.(`开始上传图片 → ${apiEndpointLabel()}/v1/meme-replies`);
     const response = await fetch(`${endpoint}/v1/meme-replies`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       body,
     });
+    trace?.(`生成接口响应：HTTP ${response.status}`);
     const payload = await parseGenerationResponse(response);
+    trace?.('已收到可解析的图片结果。');
     return payload;
   } catch (error) {
-    if (isFailure(error)) throw error;
-    const reachable = await probeBackend();
+    if (isFailure(error)) {
+      trace?.(`服务返回：${error.message}`);
+      throw error;
+    }
+    trace?.(`上传异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
+    const reachable = await probeBackend(trace);
     throw networkFailure(error, reachable);
   }
 }
@@ -66,11 +74,15 @@ function nonJsonMessage(status: number, raw: string) {
   return `服务返回非 JSON 响应（HTTP ${status}），可能被网关或代理拦截。`;
 }
 
-async function probeBackend() {
+async function probeBackend(trace?: GenerationTrace) {
   try {
     const response = await fetch(`${endpoint}/health`, { headers: { Accept: 'application/json' } });
+    trace?.(`连通性检查：/health 返回 HTTP ${response.status}`);
     return response.ok;
-  } catch { return false; }
+  } catch (error) {
+    trace?.(`连通性检查失败：${safeErrorDetail(error) || '未提供原生错误详情'}`);
+    return false;
+  }
 }
 
 function networkFailure(error: unknown, backendReachable: boolean): GenerationFailure {
