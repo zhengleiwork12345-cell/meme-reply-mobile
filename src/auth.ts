@@ -1,7 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { API_ENDPOINT } from './runtime';
 
-const endpoint = process.env.EXPO_PUBLIC_MEME_API_URL;
+const endpoint = API_ENDPOINT;
 const REFRESH_KEY = 'meme-reply-refresh-token'; const DEVICE_KEY = 'meme-reply-device-id';
 export type Session = { accessToken: string; refreshToken: string; user: { id: string; email: string } };
 let session: Session | null = null;
