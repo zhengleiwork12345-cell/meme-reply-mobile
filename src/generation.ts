@@ -1,6 +1,6 @@
 import { getAccessToken } from './auth';
 import { mimeFromUri, validateGeneration, type GenerationFailure, type GenerationInput, type GenerationResult } from './generation-contract';
-import { API_ENDPOINT, APP_BUILD_LABEL, apiEndpointLabel } from './runtime';
+import { API_ENDPOINT } from './runtime';
 
 export { validateGeneration, type GenerationFailure, type GenerationInput, type GenerationResult } from './generation-contract';
 
@@ -23,7 +23,7 @@ export async function generateReply(input: GenerationInput, trace?: GenerationTr
   if (input.contextText) body.append('contextText', input.contextText);
 
   try {
-    trace?.(`开始上传图片 → ${apiEndpointLabel()}/v1/meme-replies`);
+    trace?.('图片已提交，AI 正在生成。');
     const response = await fetch(`${endpoint}/v1/meme-replies`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -31,14 +31,14 @@ export async function generateReply(input: GenerationInput, trace?: GenerationTr
     });
     trace?.(`生成接口响应：HTTP ${response.status}`);
     const payload = await parseGenerationResponse(response);
-    trace?.('已收到可解析的图片结果。');
+    trace?.('已收到图片结果。');
     return payload;
   } catch (error) {
     if (isFailure(error)) {
       trace?.(`服务返回：${error.message}`);
       throw error;
     }
-    trace?.(`上传异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
+    trace?.(`上传请求异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
     const reachable = await probeBackend(trace);
     throw networkFailure(error, reachable);
   }
@@ -85,25 +85,24 @@ async function probeBackend(trace?: GenerationTrace) {
   }
 }
 
-function networkFailure(error: unknown, backendReachable: boolean): GenerationFailure {
-  const detail = safeErrorDetail(error);
+function networkFailure(_error: unknown, backendReachable: boolean): GenerationFailure {
   if (backendReachable) {
     return {
       kind: 'network',
-      message: `已连接生成服务，但图片上传未完成。请确认正在使用 ${APP_BUILD_LABEL}，并选择小于 5 MB 的 PNG 或 JPEG 图片。${detail}`,
+      message: '图片上传未完成，请检查网络后重试。建议选择小于 5 MB 的 PNG 或 JPEG 图片。',
       retryable: true,
     };
   }
   return {
     kind: 'network',
-    message: `无法连接生成服务 ${apiEndpointLabel()}。请检查手机网络、HTTP 测试配置或服务状态。${detail}`,
+    message: '暂时无法连接生成服务，请检查网络后重试。',
     retryable: true,
   };
 }
 
 function safeErrorDetail(error: unknown) {
   if (!(error instanceof Error) || !error.message) return '';
-  return `（${error.message.replace(/\s+/g, ' ').slice(0, 120)}）`;
+  return error.message.replace(/\s+/g, ' ').slice(0, 120);
 }
 
 function mapFailure(status: number, message?: string): GenerationFailure {

@@ -1,4 +1,4 @@
-export const APP_BUILD_LABEL = 'diagnostics-20260825.2';
+export const APP_BUILD_LABEL = 'diagnostics-20260827.1';
 export const API_ENDPOINT = process.env.EXPO_PUBLIC_MEME_API_URL;
 
 export function apiEndpointLabel() {
