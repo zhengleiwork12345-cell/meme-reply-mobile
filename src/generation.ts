@@ -1,4 +1,5 @@
 import { getAccessToken } from './auth';
+import * as FileSystem from 'expo-file-system/legacy';
 import { mimeFromUri, validateGeneration, type GenerationFailure, type GenerationInput, type GenerationResult } from './generation-contract';
 import { API_ENDPOINT } from './runtime';
 
@@ -38,10 +39,32 @@ export async function generateReply(input: GenerationInput, trace?: GenerationTr
       trace?.(`服务返回：${error.message}`);
       throw error;
     }
-    trace?.(`上传请求异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
-    const reachable = await probeBackend(trace);
-    throw networkFailure(error, reachable);
+    trace?.(`标准上传异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
+    try {
+      trace?.('正在改用 Android 兼容上传方式…');
+      const fallback = await uploadWithFileSystem(input, token, mimeType);
+      trace?.(`兼容上传响应：HTTP ${fallback.status}`);
+      const payload = await parseGenerationResponse(new Response(fallback.body, { status: fallback.status, headers: { 'Content-Type': fallback.headers['content-type'] || 'application/json' } }));
+      trace?.('已收到图片结果。');
+      return payload;
+    } catch (fallbackError) {
+      if (isFailure(fallbackError)) throw fallbackError;
+      trace?.(`兼容上传异常：${safeErrorDetail(fallbackError) || '未提供原生错误详情'}`);
+      const reachable = await probeBackend(trace);
+      throw networkFailure(fallbackError, reachable);
+    }
   }
+}
+
+async function uploadWithFileSystem(input: GenerationInput, token: string | null, mimeType: string) {
+  return FileSystem.uploadAsync(`${endpoint}/v1/meme-replies`, input.sourceUri, {
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+    fieldName: 'source',
+    mimeType,
+    parameters: { mood: input.mood, ...(input.replyText ? { replyText: input.replyText } : {}), ...(input.contextText ? { contextText: input.contextText } : {}) },
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
 }
 
 /** Parses every response deliberately so an HTML gateway error is not misreported as a generic network error. */
