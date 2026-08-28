@@ -79,6 +79,24 @@ docker run --rm \
 
 不要把签名证书、任何密码、即梦 API Key、数据库地址或 JWT 密钥复制进移动端项目或镜像。若构建服务器为 ARM 架构，需要启用 Docker 的 amd64 仿真，构建会明显更慢。
 
+## NAS 自动 Android 端到端测试
+
+仓库提供了 [scripts/nas-e2e.sh](scripts/nas-e2e.sh) 和 [maestro/e2e-generation.yaml](maestro/e2e-generation.yaml)。它会自动安装 APK、清除 App 状态、将仓库内的图标注册为 Android 测试图片、登录、打开系统选择器、选择图片、调用生成服务，并等待“生成完成”结果卡片出现；过程中不需要 noVNC 操作。
+
+首次在 NAS 安装 Maestro CLI 时会下载一次官方 CLI。准备一个仅用于自动化测试的既有 App 账户，并只在 NAS 的终端会话或密钥管理中设置变量：
+
+```bash
+cd /volume1/docker/meme-reply-mobile
+chmod +x scripts/nas-e2e.sh
+export E2E_EMAIL='测试账户邮箱'
+export E2E_PASSWORD='测试账户密码'
+export APK_PATH='/volume1/docker/meme-reply-test-upload/meme-reply-release.apk'
+export ANDROID_CONTAINER='meme-reply-android-compose-latest-android-1'
+./scripts/nas-e2e.sh
+```
+
+脚本不会打印密码、令牌、Base64 图片或即梦密钥。若容器名不同，只修改 `ANDROID_CONTAINER`；若设备 ID 不同，额外设置 `ANDROID_DEVICE_ID`。测试图片通过 MediaStore 注册，因此不会再遇到 noVNC 手动选择时“Recent 无图片”的问题。测试会等待最长 4 分钟，以覆盖即梦的正常生成时间；超时、登录失败、选图失败或没有出现结果卡片都会使脚本以非零状态退出。
+
 ## GitHub Actions + Docker Hub 构建 APK
 
 推荐将本项目推送到独立的 GitHub 仓库。GitHub Actions 负责运行测试和生成 APK；Docker Hub 只保存不含应用源码和密钥的 Android 构建环境镜像。这样不需要在你的服务器上安装 Android SDK。
