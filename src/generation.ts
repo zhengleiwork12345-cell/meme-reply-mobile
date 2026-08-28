@@ -50,8 +50,19 @@ export async function generateReply(input: GenerationInput, trace?: GenerationTr
     } catch (fallbackError) {
       if (isFailure(fallbackError)) throw fallbackError;
       trace?.(`兼容上传异常：${safeErrorDetail(fallbackError) || '未提供原生错误详情'}`);
-      const reachable = await probeBackend(trace);
-      throw networkFailure(fallbackError, reachable);
+      try {
+        trace?.('正在改用 Base64 兼容上传方式…');
+        const response = await uploadWithBase64(input, token, mimeType);
+        trace?.(`Base64 兼容上传响应：HTTP ${response.status}`);
+        const payload = await parseGenerationResponse(response);
+        trace?.('已收到图片结果。');
+        return payload;
+      } catch (base64Error) {
+        if (isFailure(base64Error)) throw base64Error;
+        trace?.(`Base64 兼容上传异常：${safeErrorDetail(base64Error) || '未提供原生错误详情'}`);
+        const reachable = await probeBackend(trace);
+        throw networkFailure(base64Error, reachable);
+      }
     }
   }
 }
@@ -64,6 +75,19 @@ async function uploadWithFileSystem(input: GenerationInput, token: string | null
     mimeType,
     parameters: { mood: input.mood, ...(input.replyText ? { replyText: input.replyText } : {}), ...(input.contextText ? { contextText: input.contextText } : {}) },
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
+}
+
+async function uploadWithBase64(input: GenerationInput, token: string | null, mimeType: string) {
+  const info = await FileSystem.getInfoAsync(input.sourceUri);
+  if (!info.exists || (typeof info.size === 'number' && info.size > 5 * 1024 * 1024)) {
+    throw { kind: 'validation', message: '即梦参考图仅支持不超过 5 MB 的 PNG 或 JPEG 图片。', retryable: false } satisfies GenerationFailure;
+  }
+  const sourceBase64 = await FileSystem.readAsStringAsync(input.sourceUri, { encoding: FileSystem.EncodingType.Base64 });
+  return fetch(`${endpoint}/v1/meme-replies/base64`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mood: input.mood, sourceMimeType: mimeType, sourceBase64, ...(input.replyText ? { replyText: input.replyText } : {}), ...(input.contextText ? { contextText: input.contextText } : {}) }),
   });
 }
 
