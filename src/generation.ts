@@ -7,6 +7,7 @@ import { API_ENDPOINT } from './runtime';
 export { validateGeneration, type GenerationFailure, type GenerationInput, type GenerationResult } from './generation-contract';
 
 const endpoint = API_ENDPOINT;
+const RESULT_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 type JsonObject = Record<string, unknown>;
 export type GenerationTrace = (event: string) => void;
@@ -120,7 +121,7 @@ export async function parseGenerationResponse(response: Response): Promise<Gener
   if (!response.ok) {
     throw mapFailure(response.status, stringField(payload, 'message') || nonJsonMessage(response.status, raw));
   }
-  if (!payload || typeof payload.imageBase64 !== 'string' || typeof payload.mimeType !== 'string' || typeof payload.requestId !== 'string') {
+  if (!payload || typeof payload.imageBase64 !== 'string' || !payload.imageBase64 || typeof payload.mimeType !== 'string' || !RESULT_MIME_TYPES.has(payload.mimeType) || typeof payload.requestId !== 'string') {
     throw { kind: 'service', message: `生成服务返回了无法识别的响应（HTTP ${response.status}）。`, retryable: true } satisfies GenerationFailure;
   }
   return payload as unknown as GenerationResult;

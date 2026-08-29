@@ -10,3 +10,10 @@ test('网关返回 HTML 时保留 HTTP 状态而不是伪装成网络错误', as
     message: expect.stringContaining('非 JSON 响应（HTTP 502）'),
   });
 });
+test.each(['image/png', 'image/jpeg', 'image/webp'])('生成响应接受 %s 并保留图片数据', async mimeType => {
+  await expect(parseGenerationResponse(new Response(JSON.stringify({ requestId: 'request-1', mimeType, imageBase64: 'aGVsbG8=' }), { status: 200 }))).resolves.toMatchObject({ mimeType, imageBase64: 'aGVsbG8=' });
+});
+test('生成响应拒绝未知 MIME 或空图片数据', async () => {
+  await expect(parseGenerationResponse(new Response(JSON.stringify({ requestId: 'request-1', mimeType: 'image/gif', imageBase64: 'aGVsbG8=' }), { status: 200 }))).rejects.toMatchObject({ kind: 'service' });
+  await expect(parseGenerationResponse(new Response(JSON.stringify({ requestId: 'request-1', mimeType: 'image/png', imageBase64: '' }), { status: 200 }))).rejects.toMatchObject({ kind: 'service' });
+});
