@@ -1,2 +1,4 @@
 # Android's Gradle wrapper is executed by Linux-based Docker and GitHub runners.
 android/gradlew text eol=lf
+# NAS and CI execute these scripts with Linux shells.
+*.sh text eol=lf

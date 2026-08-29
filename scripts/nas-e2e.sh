@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Runs on the NAS host and drives the existing docker-android emulator without
-# Maestro, noVNC, or any manual interaction. It never prints credentials,
+# Maestro, noVNC, or any manual interaction. It requires LF line endings and
+# never prints credentials,
 # authorization headers, Base64 image data, or UI XML.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
