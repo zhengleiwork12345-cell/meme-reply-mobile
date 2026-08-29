@@ -1,5 +1,6 @@
 import { getAccessToken } from './auth';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { mimeFromUri, validateGeneration, type GenerationFailure, type GenerationInput, type GenerationResult } from './generation-contract';
 import { API_ENDPOINT } from './runtime';
 
@@ -17,6 +18,27 @@ export async function generateReply(input: GenerationInput, trace?: GenerationTr
 
   const token = await getAccessToken();
   const mimeType = input.sourceMimeType || mimeFromUri(input.sourceUri);
+
+  // Android's native multipart transport is particularly unreliable when this
+  // development build talks to the temporary HTTP endpoint.  The authenticated
+  // Base64 route has the same validation and 5 MB limit, but avoids that
+  // transport-specific failure mode entirely.
+  if (Platform.OS === 'android') {
+    try {
+      trace?.('正在使用 Android 兼容上传方式…');
+      const response = await uploadWithBase64(input, token, mimeType);
+      trace?.(`兼容上传响应：HTTP ${response.status}`);
+      const payload = await parseGenerationResponse(response);
+      trace?.('已收到图片结果。');
+      return payload;
+    } catch (error) {
+      if (isFailure(error)) throw error;
+      trace?.(`兼容上传异常：${safeErrorDetail(error) || '未提供原生错误详情'}`);
+      const reachable = await probeBackend(trace);
+      throw networkFailure(error, reachable);
+    }
+  }
+
   const body = new FormData();
   body.append('source', { uri: input.sourceUri, name: `incoming.${mimeType === 'image/png' ? 'png' : 'jpg'}`, type: mimeType } as unknown as Blob);
   body.append('mood', input.mood);
